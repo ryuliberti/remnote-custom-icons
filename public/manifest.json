@@ -1,0 +1,22 @@
+{
+  "manifestVersion": 1,
+  "id": "ryuliberti-custom-icons",
+  "name": "Custom Icons",
+  "author": "Ryu Liberti",
+  "repoUrl": "https://github.com/ryuliberti/remnote-custom-icons",
+  "version": {
+    "major": 0,
+    "minor": 1,
+    "patch": 0
+  },
+  "theme": [],
+  "enableOnMobile": false,
+  "description": "Replace default document and folder icons with custom SVG, PNG, or JPG uploads, a built-in offline library, or online Iconify search.",
+  "requestNative": false,
+  "requiredScopes": [
+    {
+      "type": "All",
+      "level": "Read"
+    }
+  ]
+}
