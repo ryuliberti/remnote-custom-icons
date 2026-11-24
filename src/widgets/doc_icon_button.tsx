@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AppEvents, renderWidget, usePlugin, WidgetLocation } from '@remnote/plugin-sdk';
-import { getDocById } from '../lib/icons';
+import { getCurrentDoc, getDocById } from '../lib/icons';
 
 export const SHOW_DOC_BUTTON_SETTING = 'show-doc-button';
 
@@ -38,7 +38,6 @@ const BTN_STYLES = `
 
 export const DocIconButton = () => {
   const plugin = usePlugin();
-  const [docId, setDocId] = useState<string | undefined>();
   const [showButton, setShowButton] = useState<boolean>(true);
 
   useEffect(() => {
@@ -48,11 +47,7 @@ export const DocIconButton = () => {
       if (active) setShowButton(val !== false);
     };
 
-    (async () => {
-      const ctx = await plugin.widget.getWidgetContext<WidgetLocation.DocumentBelowTitle>();
-      if (active && ctx?.documentId) setDocId(ctx.documentId);
-      await syncSetting();
-    })();
+    syncSetting().catch(() => {});
 
     const onSettingChange = () => {
       syncSetting().catch(() => {});
@@ -64,11 +59,21 @@ export const DocIconButton = () => {
     };
   }, []);
 
-  if (!showButton || !docId) return null;
+  if (!showButton) return null;
 
   const openPicker = async () => {
-    const doc = await getDocById(plugin, docId);
-    await plugin.widget.openPopup('icon_picker', doc);
+    // Resolve the currently open document at click time: RemNote may reuse the mounted
+    // DocumentBelowTitle widget when navigating between documents/folders in the same pane.
+    const liveDoc = await getCurrentDoc(plugin);
+    if (liveDoc) {
+      await plugin.widget.openPopup('icon_picker', liveDoc);
+      return;
+    }
+    const ctx = await plugin.widget.getWidgetContext<WidgetLocation.DocumentBelowTitle>();
+    if (ctx?.documentId) {
+      const doc = await getDocById(plugin, ctx.documentId);
+      await plugin.widget.openPopup('icon_picker', doc);
+    }
   };
 
   return (
