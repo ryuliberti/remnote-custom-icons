@@ -447,14 +447,24 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
 
     // 10. Documents & Folders ("All Notes") + Search results (`data-remopt-title`) — matched by live document title.
     // Scoped strictly to `> div:first-child > :first-child` (the left icon box) so right-side action buttons (`...`) are never touched.
-    const rawName = remNames[safeId]?.trim();
-    if (rawName) {
-      const escapedName = escapeCssAttrValue(rawName);
-      const allNotesIconBox = `[data-test="All Notes Document: ${escapedName}"] > div:first-child > :first-child`;
-      const searchIconBox = `[data-remopt-title="${escapedName}"] > div:first-child > :first-child`;
+    // Emit both exact raw title and trimmed title because RemNote preserves trailing spaces in `data-remopt-title` / `All Notes Document:`.
+    const rawTitle = remNames[safeId];
+    if (rawTitle && rawTitle.trim()) {
+      const titleVariants = Array.from(new Set([rawTitle, rawTitle.trim()]));
+      const iconBoxes = titleVariants.flatMap((t) => {
+        const esc = escapeCssAttrValue(t);
+        return [
+          `[data-test="All Notes Document: ${esc}"] > div:first-child > :first-child`,
+          `[data-remopt-title="${esc}"] > div:first-child > :first-child`,
+        ];
+      });
+      const selImg = iconBoxes.map((b) => `${b} img[data-test="rem-emoji"]`).join(',\n        ');
+      const selEmoji = iconBoxes.map((b) => `${b} [data-test="rem-emoji"]:not(img)`).join(',\n        ');
+      const selEmojiChild = iconBoxes.map((b) => `${b} [data-test="rem-emoji"]:not(img) > *`).join(',\n        ');
+      const selSpanIcon = iconBoxes.map((b) => `${b} span[data-icon]:not([data-icon^="chevron"])`).join(',\n        ');
+
       rules.push(
-        `${allNotesIconBox} img[data-test="rem-emoji"],
-        ${searchIconBox} img[data-test="rem-emoji"] {
+        `${selImg} {
           box-sizing: border-box !important;
           width: 20px !important;
           height: 20px !important;
@@ -465,8 +475,7 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
           background-repeat: no-repeat !important;
           background-size: contain !important;
         }`,
-        `${allNotesIconBox} [data-test="rem-emoji"]:not(img),
-        ${searchIconBox} [data-test="rem-emoji"]:not(img) {
+        `${selEmoji} {
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
@@ -481,13 +490,11 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
           background-repeat: no-repeat !important;
           background-size: contain !important;
         }`,
-        `${allNotesIconBox} [data-test="rem-emoji"]:not(img) > *,
-        ${searchIconBox} [data-test="rem-emoji"]:not(img) > * {
+        `${selEmojiChild} {
           visibility: hidden !important;
           opacity: 0 !important;
         }`,
-        `${allNotesIconBox} span[data-icon]:not([data-icon^="chevron"]),
-        ${searchIconBox} span[data-icon]:not([data-icon^="chevron"]) {
+        `${selSpanIcon} {
           background-color: transparent !important;
           -webkit-mask-image: none !important;
           mask-image: none !important;
@@ -510,8 +517,8 @@ async function resolveRemNames(plugin: AnyPlugin, remIds: string[]): Promise<Rec
       try {
         const rem = await plugin.rem.findOne(remId);
         if (rem?.text) {
-          const text = (await plugin.richText.toString(rem.text)).trim();
-          if (text) names[remId] = text;
+          const text = await plugin.richText.toString(rem.text);
+          if (text && text.trim()) names[remId] = text;
         }
       } catch (_) {}
     })
