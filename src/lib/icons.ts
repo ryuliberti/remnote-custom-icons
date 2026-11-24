@@ -318,11 +318,14 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
         background-size: contain !important;
       }`,
 
-      // 2. Sidebar: text/Unicode emoji fallback
+      // 2. Sidebar: text/Unicode emoji (e.g. <div data-test="rem-emoji"><span>🟨</span></div>)
       `${sidebarRow} [data-test="rem-emoji"]:not(img) {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         color: transparent !important;
         font-size: 0 !important;
-        display: inline-block !important;
+        line-height: 0 !important;
         width: 18px !important;
         height: 18px !important;
         background-color: transparent !important;
@@ -330,6 +333,10 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
         background-position: center !important;
         background-repeat: no-repeat !important;
         background-size: contain !important;
+      }`,
+      `${sidebarRow} [data-test="rem-emoji"]:not(img) > * {
+        visibility: hidden !important;
+        opacity: 0 !important;
       }`,
 
       // 3. Sidebar: default document icon (masked span, excluding folder chevron & hover "+" button)
@@ -358,9 +365,12 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
 
       // 5. Inside folder / hierarchy editor: text/Unicode emoji fallback
       `${remBullet} [data-test="rem-emoji"]:not(img) {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         color: transparent !important;
         font-size: 0 !important;
-        display: inline-block !important;
+        line-height: 0 !important;
         width: 16px !important;
         height: 16px !important;
         background-color: transparent !important;
@@ -368,6 +378,10 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
         background-position: center !important;
         background-repeat: no-repeat !important;
         background-size: contain !important;
+      }`,
+      `${remBullet} [data-test="rem-emoji"]:not(img) > * {
+        visibility: hidden !important;
+        opacity: 0 !important;
       }`,
 
       // 6. Inside folder / hierarchy editor: default document icon (masked span)
@@ -394,18 +408,25 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
         background-size: contain !important;
       }`,
 
-      // 8. Document / folder title header: text/Unicode emoji fallback
+      // 8. Document / folder title header: text/Unicode emoji (matches w-10 h-10 = 40x40 flex box)
       `${docHeader} [data-test="rem-emoji"]:not(img) {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         color: transparent !important;
         font-size: 0 !important;
-        display: inline-block !important;
-        width: 36px !important;
-        height: 36px !important;
+        line-height: 0 !important;
+        width: 40px !important;
+        height: 40px !important;
         background-color: transparent !important;
         background-image: ${bgVar} !important;
         background-position: center !important;
         background-repeat: no-repeat !important;
         background-size: contain !important;
+      }`,
+      `${docHeader} [data-test="rem-emoji"]:not(img) > * {
+        visibility: hidden !important;
+        opacity: 0 !important;
       }`,
 
       // 9. Document title header when the document has NO emoji/icon yet
@@ -446,9 +467,12 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
         }`,
         `${allNotesIconBox} [data-test="rem-emoji"]:not(img),
         ${searchIconBox} [data-test="rem-emoji"]:not(img) {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
           color: transparent !important;
           font-size: 0 !important;
-          display: inline-block !important;
+          line-height: 0 !important;
           width: 20px !important;
           height: 20px !important;
           background-color: transparent !important;
@@ -456,6 +480,11 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
           background-position: center !important;
           background-repeat: no-repeat !important;
           background-size: contain !important;
+        }`,
+        `${allNotesIconBox} [data-test="rem-emoji"]:not(img) > *,
+        ${searchIconBox} [data-test="rem-emoji"]:not(img) > * {
+          visibility: hidden !important;
+          opacity: 0 !important;
         }`,
         `${allNotesIconBox} span[data-icon]:not([data-icon^="chevron"]),
         ${searchIconBox} span[data-icon]:not([data-icon^="chevron"]) {
