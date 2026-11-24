@@ -4,35 +4,40 @@ import { getCurrentDoc, getDocById } from '../lib/icons';
 
 export const SHOW_DOC_BUTTON_SETTING = 'show-doc-button';
 
+// Styled to match RemNote's native document header pills (Upload PDF/PPT, Tag, Record):
+// height 24px (h-6), 6px radius, 14px Inter regular, subtle tertiary border & hover tint.
 const BTN_STYLES = `
   *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
   .ci-bar {
     display: flex;
     align-items: center;
-    padding: 0 0 6px 0;
+    padding: 0 0 4px 0;
   }
   .ci-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 9px;
+    justify-content: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 8px;
     border-radius: 6px;
-    border: 1px solid rgba(127, 127, 127, 0.25);
+    border: 1px solid rgba(127, 127, 127, 0.28);
     background: transparent;
     color: inherit;
-    opacity: 0.68;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.2;
+    opacity: 0.62;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, Roboto, Helvetica, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
     cursor: pointer;
+    user-select: none;
     transition: opacity 0.14s, background-color 0.14s, border-color 0.14s;
   }
   .ci-trigger:hover {
-    opacity: 1;
+    opacity: 0.9;
     background: rgba(127, 127, 127, 0.14);
-    border-color: rgba(127, 127, 127, 0.42);
+    border-color: rgba(127, 127, 127, 0.4);
   }
 `;
 
@@ -83,12 +88,12 @@ export const DocIconButton = () => {
         <button className="ci-trigger" onClick={openPicker} title="Choose custom icon (Ctrl+Alt+I)">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="13"
-            height="13"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="1.9"
             strokeLinecap="round"
             strokeLinejoin="round"
           >

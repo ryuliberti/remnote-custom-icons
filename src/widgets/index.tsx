@@ -12,7 +12,6 @@ import {
   clearRemIcon,
   getCurrentDoc,
   getDocById,
-  getFocusedOrCurrentDoc,
   LEGACY_ICONS_KEY,
   STORE_KEY,
 } from '../lib/icons';
@@ -130,21 +129,6 @@ async function onActivate(plugin: ReactRNPlugin) {
             ? args.documentId
             : undefined;
       await openPickerForDoc(id);
-    },
-  });
-
-  // 3. Per-Rem / subfolder menu
-  await plugin.app.registerRemMenuItem({
-    id: 'custom-icons-rem-menu',
-    name: 'Custom Icon',
-    keywords: 'icon custom',
-    action: async () => {
-      const doc = await getFocusedOrCurrentDoc(plugin);
-      if (!doc) {
-        await plugin.app.toast('Select a document, folder, or Rem first.');
-        return;
-      }
-      await plugin.widget.openPopup('icon_picker', doc);
     },
   });
 

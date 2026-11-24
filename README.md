@@ -13,9 +13,8 @@ A RemNote plugin to replace default document and folder icons with custom images
 
 ## How to Open
 
-- **Button below title:** click **Change icon** directly below the document or folder title *(can be toggled off in plugin settings)*.
+- **Button below title:** hover the document or folder header and click **Change icon** *(can be toggled off in plugin settings)*.
 - **Document `...` menu:** select **Custom Icon**.
-- **Rem / subfolder menu:** select **Custom Icon**.
 - **Keyboard shortcut:** `Ctrl+Alt+I` (`Cmd+Option+I` on macOS) — customizable in RemNote keyboard settings.
 - **Omnibar (`Ctrl+K` / `Ctrl+P`):** **Custom Icon: Choose icon** or **Custom Icon: Remove icon**.
 

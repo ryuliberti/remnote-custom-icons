@@ -239,8 +239,34 @@ function escapeCssAttrValue(val: string): string {
   return val.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\n\r]/g, ' ');
 }
 
+const DOC_BUTTON_WRAPPER =
+  '#DropToOpenAsDocument > div:has(iframe[data-plugin-id="ryuliberti-custom-icons"][src*="doc_icon_button"])';
+
+/**
+ * Matches RemNote's native header pills (Upload PDF/PPT, Tag, Record):
+ * hides the Change icon widget until hovering the document/folder header,
+ * and keeps the native pills visible while moving the pointer onto Change icon.
+ */
+const DOC_BUTTON_HOVER_CSS = `
+${DOC_BUTTON_WRAPPER} {
+  opacity: 0 !important;
+  transition: opacity 0.15s ease !important;
+}
+#DropToOpenAsDocument:has(.rn-doc-header__properties) > div:has(iframe[data-plugin-id="ryuliberti-custom-icons"][src*="doc_icon_button"]) {
+  margin-top: -6px !important;
+}
+#DropToOpenAsDocument:hover > div:has(iframe[data-plugin-id="ryuliberti-custom-icons"][src*="doc_icon_button"]),
+#DropToOpenAsDocument:focus-within > div:has(iframe[data-plugin-id="ryuliberti-custom-icons"][src*="doc_icon_button"]) {
+  opacity: 1 !important;
+}
+#DropToOpenAsDocument:hover .rn-doc-header .fade-on-hide-ui {
+  opacity: 1 !important;
+}
+`.trim();
+
 /**
  * Generates CSS targeting:
+ *  - Document header Change icon button hover-reveal behavior
  *  - Left sidebar rows (`Document Sidebar Row <id>`)
  *  - Subfolders / child documents inside folders (`[data-rem-id="<id>"] [data-test="Rem Bullet Container"]`)
  *  - Open document / folder title header (`[data-document-id="<id>"] #doc-title`)
@@ -260,7 +286,7 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
     activeAssignments.push([safeId, iconId]);
   }
 
-  if (activeAssignments.length === 0) return '';
+  if (activeAssignments.length === 0) return DOC_BUTTON_HOVER_CSS;
 
   const varDecls: string[] = [];
   for (const iconId of Array.from(usedIconIds)) {
@@ -269,7 +295,7 @@ export function buildCss(store: IconStore, remNames: Record<string, string> = {}
     varDecls.push(`  --ci-${safeVar}: url("${escapeCssUrl(icon.src)}");`);
   }
 
-  const rules: string[] = [`:root {\n${varDecls.join('\n')}\n}`];
+  const rules: string[] = [DOC_BUTTON_HOVER_CSS, `:root {\n${varDecls.join('\n')}\n}`];
 
   for (const [safeId, iconId] of activeAssignments) {
     const safeVar = iconId.replace(/[^a-zA-Z0-9_-]/g, '');
