@@ -5,7 +5,7 @@ A RemNote plugin to replace default document and folder icons with custom images
 ## Features
 
 - **Hybrid Icon Library:**
-  - **Built-in offline library:** 84 curated icons (Lucide + Devicon) with instant search, category filters, and a Notion-style 10-color palette for monochrome icons.
+  - **Built-in offline library:** 86 curated icons — including customizable solid **Folder** and **Document** shapes at the top, Lucide icons, and Devicon logos — with instant search, category filters, and a color palette + custom HEX color picker.
   - **Optional online search (Iconify):** search across 200,000+ open-source icons with pagination and mixed minimal/colored results. Picked SVGs are sanitized and saved locally in RemNote synced storage so they work offline.
 - **File Uploads (SVG, PNG, JPG):** automatic multi-step downscaling up to 128×128 px (preserving aspect ratio and PNG transparency), plus SVG sanitization and `viewBox` normalization.
 - **Deduplicated Synced Storage:** each unique icon is stored once and reused across documents via CSS variables.

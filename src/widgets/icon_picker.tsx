@@ -47,6 +47,15 @@ function foldText(s: string): string {
     .toLowerCase();
 }
 
+function normalizeHexColor(raw: string): string | null {
+  const clean = raw.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(clean)) return `#${clean.toLowerCase()}`;
+  if (/^[0-9a-fA-F]{3}$/.test(clean)) {
+    return `#${clean[0]}${clean[0]}${clean[1]}${clean[1]}${clean[2]}${clean[2]}`.toLowerCase();
+  }
+  return null;
+}
+
 // Scoped exclusively to the isolated icon_picker iframe.
 const PICKER_STYLES = `
   *, *::before, *::after { box-sizing: border-box; }
@@ -212,6 +221,67 @@ const PICKER_STYLES = `
   .ci-swatch.is-active {
     transform: scale(1.1);
     box-shadow: 0 0 0 2px rgba(24, 24, 28, 0.9), 0 0 0 3.8px #3b82f6;
+  }
+  .ci-swatch-custom {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    background: conic-gradient(#ef4444, #f97316, #eab308, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .ci-swatch-custom:hover {
+    transform: scale(1.14);
+  }
+  .ci-swatch-custom.is-active {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 2px rgba(24, 24, 28, 0.9), 0 0 0 3.8px #3b82f6;
+  }
+  .ci-color-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(127, 127, 127, 0.3);
+    background: rgba(127, 127, 127, 0.1);
+  }
+  .ci-color-native {
+    width: 34px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid rgba(127, 127, 127, 0.45);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ci-color-native::-webkit-color-swatch-wrapper { padding: 2px; }
+  .ci-color-native::-webkit-color-swatch { border: none; border-radius: 4px; }
+  .ci-hex-input {
+    width: 108px;
+    border: 1px solid rgba(127, 127, 127, 0.38);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background: rgba(127, 127, 127, 0.08);
+    color: inherit;
+    outline: none;
+  }
+  .ci-hex-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
   }
 
   .ci-grid-area {
@@ -459,6 +529,14 @@ export const IconPicker = () => {
       return ICON_COLORS[0].hex;
     }
   });
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [hexDraft, setHexDraft] = useState<string>(() => {
+    try {
+      return localStorage.getItem(COLOR_PREF_KEY) || ICON_COLORS[0].hex;
+    } catch (_) {
+      return ICON_COLORS[0].hex;
+    }
+  });
 
   // Offline library state
   const [libQuery, setLibQuery] = useState('');
@@ -493,11 +571,25 @@ export const IconPicker = () => {
     return () => abortRef.current?.abort();
   }, []);
 
-  const chooseColor = (hex: string) => {
-    setColor(hex);
+  const chooseColor = (hex: string, closeMenu = false) => {
+    const normalized = hex.toLowerCase();
+    setColor(normalized);
+    setHexDraft(normalized);
+    if (closeMenu) setColorMenuOpen(false);
     try {
-      localStorage.setItem(COLOR_PREF_KEY, hex);
+      localStorage.setItem(COLOR_PREF_KEY, normalized);
     } catch (_) {}
+  };
+
+  const handleHexChange = (val: string) => {
+    setHexDraft(val);
+    const parsed = normalizeHexColor(val);
+    if (parsed) {
+      setColor(parsed);
+      try {
+        localStorage.setItem(COLOR_PREF_KEY, parsed);
+      } catch (_) {}
+    }
   };
 
   useEffect(() => {
@@ -724,18 +816,72 @@ export const IconPicker = () => {
     setTab('online');
   };
 
+  const isCustomColor = !ICON_COLORS.some((c) => c.hex.toLowerCase() === color.toLowerCase());
+
   const renderColorPalette = () => (
-    <div className="ci-colors" aria-label="Monochrome icon color">
-      <span className="ci-color-label">Color:</span>
-      {ICON_COLORS.map((c) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="ci-colors" aria-label="Monochrome icon color">
+        <span className="ci-color-label">Color:</span>
+        {ICON_COLORS.map((c) => (
+          <button
+            key={c.hex}
+            title={c.name}
+            onClick={() => chooseColor(c.hex, true)}
+            className={`ci-swatch${color.toLowerCase() === c.hex.toLowerCase() ? ' is-active' : ''}`}
+            style={{ backgroundColor: c.hex }}
+          />
+        ))}
         <button
-          key={c.hex}
-          title={c.name}
-          onClick={() => chooseColor(c.hex)}
-          className={`ci-swatch${color === c.hex ? ' is-active' : ''}`}
-          style={{ backgroundColor: c.hex }}
-        />
-      ))}
+          title={`Custom color (${color.toUpperCase()})`}
+          aria-label="Custom color"
+          aria-expanded={colorMenuOpen}
+          onClick={() => {
+            setHexDraft(color);
+            setColorMenuOpen((v) => !v);
+          }}
+          className={`ci-swatch-custom${isCustomColor || colorMenuOpen ? ' is-active' : ''}`}
+          style={isCustomColor ? { background: color } : undefined}
+        >
+          {isCustomColor ? '' : '+'}
+        </button>
+      </div>
+
+      {colorMenuOpen && (
+        <div className="ci-color-menu">
+          <input
+            type="color"
+            className="ci-color-native"
+            aria-label="Pick custom color"
+            value={color}
+            onChange={(e) => chooseColor(e.target.value)}
+          />
+          <input
+            className="ci-hex-input"
+            aria-label="HEX color code"
+            placeholder="#3b82f6"
+            maxLength={7}
+            value={hexDraft}
+            onChange={(e) => handleHexChange(e.target.value)}
+            onBlur={() => setHexDraft(color)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === 'Escape') {
+                setHexDraft(color);
+                setColorMenuOpen(false);
+              }
+            }}
+          />
+          <span style={{ fontSize: 11.5, opacity: 0.65, flex: 1 }}>Pick or enter HEX</span>
+          <button
+            className="ci-page-btn"
+            onClick={() => {
+              setHexDraft(color);
+              setColorMenuOpen(false);
+            }}
+          >
+            Done
+          </button>
+        </div>
+      )}
     </div>
   );
 
