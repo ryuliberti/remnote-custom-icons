@@ -7,6 +7,13 @@ export const CSS_ID = 'custom-icons';
 export const LEGACY_ICONS_KEY = 'icons'; // v1: Record<remId, url>
 export const STORE_KEY = 'icons_store_v2';
 export const LOCAL_CSS_CACHE_KEY = 'cached_css_v2';
+export const COLOR_PREFS_KEY = 'color_prefs_v1';
+export const MAX_RECENT_COLORS = 6;
+
+export interface ColorPrefs {
+  lastColor: string;
+  recentCustomColors: string[];
+}
 
 export type StoredIconKind = UploadedIconKind | 'url' | 'sample' | 'catalog' | 'online';
 
@@ -129,6 +136,46 @@ export async function getStore(plugin: AnyPlugin): Promise<IconStore> {
 
 export async function saveStore(plugin: AnyPlugin, store: IconStore): Promise<void> {
   await plugin.storage.setSynced(STORE_KEY, store);
+}
+
+const VALID_HEX_RE = /^#[0-9a-f]{6}$/i;
+
+export async function getColorPrefs(plugin: AnyPlugin, defaultColor: string): Promise<ColorPrefs> {
+  try {
+    const raw = await plugin.storage.getSynced<Partial<ColorPrefs>>(COLOR_PREFS_KEY);
+    if (raw && typeof raw === 'object') {
+      const lastColor =
+        typeof raw.lastColor === 'string' && VALID_HEX_RE.test(raw.lastColor)
+          ? raw.lastColor.toLowerCase()
+          : defaultColor.toLowerCase();
+      const recentCustomColors = Array.isArray(raw.recentCustomColors)
+        ? Array.from(
+            new Set(
+              raw.recentCustomColors
+                .filter((c): c is string => typeof c === 'string' && VALID_HEX_RE.test(c))
+                .map((c) => c.toLowerCase())
+            )
+          ).slice(0, MAX_RECENT_COLORS)
+        : [];
+      return { lastColor, recentCustomColors };
+    }
+  } catch (_) {}
+  return { lastColor: defaultColor.toLowerCase(), recentCustomColors: [] };
+}
+
+export async function saveColorPrefs(plugin: AnyPlugin, prefs: ColorPrefs): Promise<void> {
+  await plugin.storage.setSynced(COLOR_PREFS_KEY, prefs);
+}
+
+export function addRecentCustomColor(
+  recent: string[],
+  hex: string,
+  presetHexes: readonly string[]
+): string[] {
+  const norm = hex.toLowerCase();
+  if (!VALID_HEX_RE.test(norm)) return recent;
+  if (presetHexes.some((p) => p.toLowerCase() === norm)) return recent;
+  return [norm, ...recent.filter((c) => c.toLowerCase() !== norm)].slice(0, MAX_RECENT_COLORS);
 }
 
 /**

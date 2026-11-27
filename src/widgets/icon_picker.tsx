@@ -20,12 +20,15 @@ import {
   searchOnlineIndex,
 } from '../lib/iconify';
 import {
+  addRecentCustomColor,
   assignIcon,
   assignLibraryIcon,
   clearRemIcon,
   deleteLibraryIcon,
+  getColorPrefs,
   getStore,
   type IconStore,
+  saveColorPrefs,
   type StoredIcon,
 } from '../lib/icons';
 import { processUploadedFile } from '../lib/imageUpload';
@@ -37,8 +40,8 @@ interface Ctx {
 
 type Tab = 'library' | 'online' | 'upload';
 
-const COLOR_PREF_KEY = 'remnote_custom_icons_color';
 const ONLINE_SUGGESTIONS = ['react', 'python', 'docker', 'book', 'brain', 'folder', 'music', 'rocket'];
+const PRESET_HEXES = ICON_COLORS.map((c) => c.hex.toLowerCase());
 
 function foldText(s: string): string {
   return s
@@ -249,12 +252,25 @@ const PICKER_STYLES = `
   }
   .ci-color-menu {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 9px;
+    flex-direction: column;
+    gap: 7px;
+    padding: 8px 9px;
     border-radius: 8px;
     border: 1px solid rgba(127, 127, 127, 0.3);
     background: rgba(127, 127, 127, 0.1);
+  }
+  .ci-color-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ci-recent-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(127, 127, 127, 0.2);
+    flex-wrap: wrap;
   }
   .ci-color-native {
     width: 34px;
@@ -517,26 +533,16 @@ export const IconPicker = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const onlineGridRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const colorSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [store, setStore] = useState<IconStore>({ library: {}, assignments: {} });
   const [tab, setTab] = useState<Tab>('library');
 
-  const [color, setColor] = useState<string>(() => {
-    try {
-      return localStorage.getItem(COLOR_PREF_KEY) || ICON_COLORS[0].hex;
-    } catch (_) {
-      return ICON_COLORS[0].hex;
-    }
-  });
+  const [color, setColor] = useState<string>(ICON_COLORS[0].hex);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
-  const [hexDraft, setHexDraft] = useState<string>(() => {
-    try {
-      return localStorage.getItem(COLOR_PREF_KEY) || ICON_COLORS[0].hex;
-    } catch (_) {
-      return ICON_COLORS[0].hex;
-    }
-  });
+  const [hexDraft, setHexDraft] = useState<string>(ICON_COLORS[0].hex);
+  const [recentCustomColors, setRecentCustomColors] = useState<string[]>([]);
 
   // Offline library state
   const [libQuery, setLibQuery] = useState('');
@@ -562,23 +568,50 @@ export const IconPicker = () => {
 
   useEffect(() => {
     (async () => {
-      const w = await plugin.widget.getWidgetContext<WidgetLocation.Popup>();
+      const [w, loadedStore, prefs] = await Promise.all([
+        plugin.widget.getWidgetContext<WidgetLocation.Popup>(),
+        getStore(plugin),
+        getColorPrefs(plugin, ICON_COLORS[0].hex),
+      ]);
       const c = w?.contextData as Ctx | undefined;
-      if (!c) return;
-      setCtx(c);
-      setStore(await getStore(plugin));
+      if (c) setCtx(c);
+      setStore(loadedStore);
+      setColor(prefs.lastColor);
+      setHexDraft(prefs.lastColor);
+      setRecentCustomColors(prefs.recentCustomColors);
     })();
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      if (colorSaveTimerRef.current) clearTimeout(colorSaveTimerRef.current);
+    };
   }, []);
 
-  const chooseColor = (hex: string, closeMenu = false) => {
+  const persistColorPrefs = (nextColor: string, nextRecent: string[], immediate = false) => {
+    if (colorSaveTimerRef.current) {
+      clearTimeout(colorSaveTimerRef.current);
+      colorSaveTimerRef.current = null;
+    }
+    const run = () => {
+      saveColorPrefs(plugin, { lastColor: nextColor, recentCustomColors: nextRecent }).catch(() => {});
+    };
+    if (immediate) run();
+    else colorSaveTimerRef.current = setTimeout(run, 250);
+  };
+
+  const chooseColor = (hex: string, closeMenu = false, immediate = false) => {
     const normalized = hex.toLowerCase();
     setColor(normalized);
     setHexDraft(normalized);
     if (closeMenu) setColorMenuOpen(false);
-    try {
-      localStorage.setItem(COLOR_PREF_KEY, normalized);
-    } catch (_) {}
+    persistColorPrefs(normalized, recentCustomColors, immediate);
+  };
+
+  const commitCurrentCustomColor = (closeMenu = false) => {
+    const nextRecent = addRecentCustomColor(recentCustomColors, color, PRESET_HEXES);
+    setRecentCustomColors(nextRecent);
+    setHexDraft(color);
+    if (closeMenu) setColorMenuOpen(false);
+    persistColorPrefs(color, nextRecent, true);
   };
 
   const handleHexChange = (val: string) => {
@@ -586,9 +619,7 @@ export const IconPicker = () => {
     const parsed = normalizeHexColor(val);
     if (parsed) {
       setColor(parsed);
-      try {
-        localStorage.setItem(COLOR_PREF_KEY, parsed);
-      } catch (_) {}
+      persistColorPrefs(parsed, recentCustomColors, false);
     }
   };
 
@@ -697,6 +728,7 @@ export const IconPicker = () => {
   const applyCatalogIcon = async (ic: CatalogIcon) => {
     if (!ctx || busy) return;
     setError('');
+    if (ic.monochrome) commitCurrentCustomColor(false);
     const dataUrl = renderCatalogSvgDataUrl(ic, color);
     const res = await assignIcon(plugin, ctx.remId, {
       src: dataUrl,
@@ -714,6 +746,7 @@ export const IconPicker = () => {
     setStatus('');
     setBusy(true);
     try {
+      if (item.monochrome) commitCurrentCustomColor(false);
       const { dataUrl, width, height } = prepareOnlineIconForSave(item, color);
       const res = await assignIcon(plugin, ctx.remId, {
         src: dataUrl,
@@ -826,7 +859,7 @@ export const IconPicker = () => {
           <button
             key={c.hex}
             title={c.name}
-            onClick={() => chooseColor(c.hex, true)}
+            onClick={() => chooseColor(c.hex, true, true)}
             className={`ci-swatch${color.toLowerCase() === c.hex.toLowerCase() ? ' is-active' : ''}`}
             style={{ backgroundColor: c.hex }}
           />
@@ -840,46 +873,55 @@ export const IconPicker = () => {
             setColorMenuOpen((v) => !v);
           }}
           className={`ci-swatch-custom${isCustomColor || colorMenuOpen ? ' is-active' : ''}`}
-          style={isCustomColor ? { background: color } : undefined}
         >
-          {isCustomColor ? '' : '+'}
+          +
         </button>
       </div>
 
       {colorMenuOpen && (
         <div className="ci-color-menu">
-          <input
-            type="color"
-            className="ci-color-native"
-            aria-label="Pick custom color"
-            value={color}
-            onChange={(e) => chooseColor(e.target.value)}
-          />
-          <input
-            className="ci-hex-input"
-            aria-label="HEX color code"
-            placeholder="#3b82f6"
-            maxLength={7}
-            value={hexDraft}
-            onChange={(e) => handleHexChange(e.target.value)}
-            onBlur={() => setHexDraft(color)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === 'Escape') {
-                setHexDraft(color);
-                setColorMenuOpen(false);
-              }
-            }}
-          />
-          <span style={{ fontSize: 11.5, opacity: 0.65, flex: 1 }}>Pick or enter HEX</span>
-          <button
-            className="ci-page-btn"
-            onClick={() => {
-              setHexDraft(color);
-              setColorMenuOpen(false);
-            }}
-          >
-            Done
-          </button>
+          <div className="ci-color-menu-row">
+            <input
+              type="color"
+              className="ci-color-native"
+              aria-label="Pick custom color"
+              value={color}
+              onChange={(e) => chooseColor(e.target.value, false, false)}
+            />
+            <input
+              className="ci-hex-input"
+              aria-label="HEX color code"
+              placeholder="#3b82f6"
+              maxLength={7}
+              value={hexDraft}
+              onChange={(e) => handleHexChange(e.target.value)}
+              onBlur={() => setHexDraft(color)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                  commitCurrentCustomColor(true);
+                }
+              }}
+            />
+            <span style={{ fontSize: 11.5, opacity: 0.65, flex: 1 }}>Pick or enter HEX</span>
+            <button className="ci-page-btn" onClick={() => commitCurrentCustomColor(true)}>
+              Done
+            </button>
+          </div>
+
+          {recentCustomColors.length > 0 && (
+            <div className="ci-recent-row" aria-label="Recent custom colors">
+              <span className="ci-color-label">Recent:</span>
+              {recentCustomColors.map((hex) => (
+                <button
+                  key={hex}
+                  title={hex.toUpperCase()}
+                  onClick={() => chooseColor(hex, false, true)}
+                  className={`ci-swatch${color.toLowerCase() === hex.toLowerCase() ? ' is-active' : ''}`}
+                  style={{ backgroundColor: hex }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
